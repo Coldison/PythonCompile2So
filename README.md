@@ -1,8 +1,19 @@
-# PythonCompilerC
+# PythonCompile2So
+
+Update 2022.7.18:
+
++ Fix path issues so can be applied on Windows platform and generate pyd files.
++ Move the compiled files  to the corresponding python file directory to get the same directory structure of compiled files as python files in the project.
+
+---
+
+
+
 Compile an entire python project into .so files to protect your code
 
 To launch the compiler, put it into your project's root directory and execute:
-  - python3 compile.py --project-dir {your prject directory, Eg: .} --build-lib {compiled project destination}
+
+- python3 compile.py --project-dir {your prject directory, Eg: .} --build-lib {compiled project destination}
 
 The result will be a new project containing only .so files with the exception of your entry point file to launch the projcet, which is 'main.py' by default but you can change it.
 

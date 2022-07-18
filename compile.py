@@ -1,3 +1,14 @@
+# !/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+@File    :   compile.py
+@Time    :   2022/07/18 13:15:37
+@Author  :   Dison
+@Version :   1.0
+@Contact :   coldison@foxmail.com
+@License :   (C)Copyright 2019-2022
+@Desc    :   encrypt python file to so/pyd file, originally forked from https://github.com/HamzaAissaoui/PythonCompilerC
+"""
 from distutils.core import setup
 import shutil
 from Cython.Distutils import build_ext
@@ -12,13 +23,14 @@ parser.add_argument('--project-dir', default=None, help='input folder path', typ
 parser.add_argument('--build-lib', default=None, help='output folder path', type=str)
 args, unknown = parser.parse_known_args()
 
+CLEAN_FOLDERS = ['__pycache__', '.git', '.pytest_cache', 'plots', 'scripts', ".history"]
 
 def fast_scandir(dirname, clean=False):
     """
     Returns all the folders and subfolders inside a directory
     """
 
-    folders_to_clean = ['__pycache__', '.git', '.pytest_cache', 'plots', 'scripts'] if clean is False else ['.git']
+    folders_to_clean = CLEAN_FOLDERS if clean is False else [".git"]
     subfolders = [f.path for f in os.scandir(dirname) if f.is_dir() and f.name not in folders_to_clean]
 
     for dirname in list(subfolders):
@@ -49,6 +61,7 @@ def clean_project(dirname=None):
         pyd_paths.extend(glob.glob(os.path.join(element, "*.pyd")))
         ipynb_paths.extend(glob.glob(os.path.join(element, "*.ipynb")))
         pyc_paths.extend(glob.glob(os.path.join(element, "*.pyc")))
+        
 
     for element in c_paths:
         os.remove(element)
@@ -58,6 +71,13 @@ def clean_project(dirname=None):
         os.remove(element)
     for element in pyc_paths:
         os.remove(element)
+
+    for rm_folder in CLEAN_FOLDERS:
+        subfolders = fast_scandir(dirname, clean=True)
+        subfolders.append(dirname)
+        for element in subfolders:
+            if rm_folder in element:
+                shutil.rmtree(element)
 
     if platform.system() in ['Linux', 'Darwin']:
         for so_path in so_paths:
@@ -69,7 +89,7 @@ def clean_project(dirname=None):
             if py_directory in py_paths:
                 os.remove(py_directory)
 
-    if platform.system() == 'Windows':
+    elif platform.system() == 'Windows':
         for pyd_path in pyd_paths:
             so_file = pyd_path.split('/')[-1]
             directory = '/'.join(pyd_path.split('/')[:-1])
@@ -102,9 +122,13 @@ def main(root_path=None, build_path=None):
             exit(1)
 
         #build_path = os.path.abspath(build_path)
+        if platform.system() in ['Linux', 'Darwin']:
+            os.system('cp -R %s %s' % (root_path, build_path))
+        elif platform.system() == 'Windows':
+            os.system('xcopy /E /Y /I /EXCLUDE:exclude.txt %s %s' % (root_path, build_path))
 
-        os.system('cp -R %s %s' % (root_path, build_path))
         os.system('cd %s' % build_path)
+
         compile_py_path = os.path.join(root_path, 'scripts', 'compile.py')
         os.system(f'python {compile_py_path} build_ext --build-lib {build_path}')
         if os.path.exists(os.path.join(build_path, 'build')):
@@ -122,12 +146,23 @@ def main(root_path=None, build_path=None):
 
     subfolders = fast_scandir(build_path)
     subfolders.append(build_path)
+
     final = []
 
-    for element in subfolders:
-        final.extend(glob.glob(os.path.join(element, "*.py")))
+    # 映射.py文件到.so文件
+    path_dict = dict()
 
-    final.remove(os.path.join(build_path, "main.py"))
+    for element in subfolders:
+        file_elements = glob.glob(os.path.join(element, "*.py"))
+        final.extend(file_elements)
+        for file in file_elements:
+            print("file:",file)
+            if platform.system() in ['Linux', 'Darwin']:
+                path_dict[file.split('/')[-1].split('.')[0]] = element
+            elif platform.system() == 'Windows':
+                path_dict[file.split('\\')[-1].split('.')[0]] = element
+
+    # final.remove(os.path.join(build_path, "main.py"))
 
     setup(
         name='Well Integrity',
@@ -135,12 +170,35 @@ def main(root_path=None, build_path=None):
         ext_modules=cythonize(final, compiler_directives={'always_allow_keywords': True})
     )
 
+    if platform.system() in ['Linux', 'Darwin']:
+        so_file_list = glob.glob(os.path.join(build_path, "*.so"))
+
+        for so in so_file_list:
+            file = so.split('/')[-1].split('.')[0]
+            if file in path_dict:
+                os.system('mv %s %s' % (so, path_dict[file]))
+                print(f" move {so} to {path_dict[file]}")
+
+    elif platform.system() == 'Windows':
+        pyd_file_list = glob.glob(os.path.join(build_path, "*.pyd"))
+        print(f"path_dict: {path_dict} pyd_file_list: {pyd_file_list}")
+
+        for pyd in pyd_file_list:
+            file = pyd.split('\\')[-1].split('.')[0]
+            print("file:",file)
+            if file in path_dict:
+                os.system('move %s %s' % (pyd, path_dict[file]))
+                print(f" move {pyd} to {path_dict[file]}")
+
+        
+
     clean_project(build_path)
-    shutil.rmtree(os.path.join(build_path, 'scripts'))
-
-
+    
+    # shutil.rmtree(os.path.join(build_path, 'scripts'))
 
 if __name__ == '__main__':
     project_dir_ = args.project_dir
     build_path_ = args.build_lib
+    # clean_project(build_path_)
     main(root_path=project_dir_, build_path=build_path_)
+
