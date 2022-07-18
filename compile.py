@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 @File    :   compile.py
-@Time    :   2022/07/18 13:15:37
+@Time    :   2022/07/17 18:10:38
 @Author  :   Dison
 @Version :   1.0
 @Contact :   coldison@foxmail.com
 @License :   (C)Copyright 2019-2022
-@Desc    :   encrypt python file to so/pyd file, originally forked from https://github.com/HamzaAissaoui/PythonCompilerC
+@Desc    :   None
 """
+
 from distutils.core import setup
 import shutil
 from Cython.Distutils import build_ext
@@ -24,6 +25,7 @@ parser.add_argument('--build-lib', default=None, help='output folder path', type
 args, unknown = parser.parse_known_args()
 
 CLEAN_FOLDERS = ['__pycache__', '.git', '.pytest_cache', 'plots', 'scripts', ".history"]
+
 
 def fast_scandir(dirname, clean=False):
     """
@@ -91,10 +93,10 @@ def clean_project(dirname=None):
 
     elif platform.system() == 'Windows':
         for pyd_path in pyd_paths:
-            so_file = pyd_path.split('/')[-1]
-            directory = '/'.join(pyd_path.split('/')[:-1])
+            pyd_file = pyd_path.split('\\')[-1]
+            directory = '\\'.join(pyd_path.split('\\')[:-1])
 
-            py_file = so_file.split('.')[0] + '.py'
+            py_file = pyd_file.split('.')[0] + '.py'
             py_directory = os.path.join(directory, py_file)
             if py_directory in py_paths:
                 os.remove(py_directory)
@@ -123,9 +125,10 @@ def main(root_path=None, build_path=None):
 
         #build_path = os.path.abspath(build_path)
         if platform.system() in ['Linux', 'Darwin']:
+            os.makedirs(build_path, exist_ok=True)
             os.system('cp -R %s %s' % (root_path, build_path))
         elif platform.system() == 'Windows':
-            os.system('xcopy /E /Y /I /EXCLUDE:exclude.txt %s %s' % (root_path, build_path))
+            os.system('xcopy /E /Y /I %s %s' % (root_path, build_path))
 
         os.system('cd %s' % build_path)
 
@@ -193,6 +196,8 @@ def main(root_path=None, build_path=None):
         
 
     clean_project(build_path)
+    if os.path.exists("build"):
+        shutil.rmtree("build")
     
     # shutil.rmtree(os.path.join(build_path, 'scripts'))
 
